@@ -2,12 +2,17 @@ import wx
 from models.citation_types import CITATION_TYPES, CONFLICTING_COMBINATIONS, get_citation_sentiment
 from ui.conflict_dialog import ConflictDialog
 
+# Custom return codes for dialog
+DIALOG_BACK = 100
+
 class CitationDialog(wx.Dialog):
-    def __init__(self, parent, doi, title, authors=None):
+    def __init__(self, parent, doi, title, authors=None, citation_number=None, pre_selected=None):
         super().__init__(parent, title="Select CiTO Types", size=(900, 700), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.doi = doi
         self.title = title
         self.authors = authors if authors else ""
+        self.citation_number = citation_number
+        self.pre_selected = pre_selected if pre_selected else []
         self.checkboxes = {}
         self._build()
 
@@ -15,6 +20,12 @@ class CitationDialog(wx.Dialog):
         vbox = wx.BoxSizer(wx.VERTICAL)
         bold_font = wx.Font(wx.FontInfo(12).Bold())
         italic_font = wx.Font(wx.FontInfo(12).Italic())
+
+        # Citation number header (if provided)
+        if self.citation_number is not None:
+            num_lbl = wx.StaticText(self, label=f"No. {self.citation_number}")
+            num_lbl.SetFont(bold_font)
+            vbox.Add(num_lbl, 0, wx.ALL, 8)
 
         # DOI Header
         doi_lbl = wx.StaticText(self, label=f"Cited DOI: {self.doi}")
@@ -62,6 +73,10 @@ class CitationDialog(wx.Dialog):
             cb = wx.CheckBox(scrolled, label=label)
             cb.SetFont(wx.Font(wx.FontInfo(14)))
              
+            # Pre-check if this was previously selected
+            if label in self.pre_selected:
+                cb.SetValue(True)
+            
             # Style based on sentiment
             sentiment = get_citation_sentiment(label)
             if sentiment == "positive":
@@ -79,15 +94,19 @@ class CitationDialog(wx.Dialog):
             grid_sizer.AddGrowableCol(i)
         scrolled.SetSizer(grid_sizer)
         
-        # Buttons
-        btn_sizer = wx.StdDialogButtonSizer()
+        # Buttons - custom layout to position back button on the left
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        back_btn = wx.Button(self, DIALOG_BACK, "\u2190 Back")  # Unicode left arrow
         ok_btn = wx.Button(self, wx.ID_OK)
         cancel_btn = wx.Button(self, wx.ID_CANCEL)
-        btn_sizer.AddButton(ok_btn)
-        btn_sizer.AddButton(cancel_btn)
-        btn_sizer.Realize()
+        
+        btn_sizer.Add(back_btn, 0, wx.ALL, 5)
+        btn_sizer.AddStretchSpacer()
+        btn_sizer.Add(ok_btn, 0, wx.ALL, 5)
+        btn_sizer.Add(cancel_btn, 0, wx.ALL, 5)
 
         ok_btn.Bind(wx.EVT_BUTTON, self.on_ok)
+        back_btn.Bind(wx.EVT_BUTTON, self.on_back)
 
         vbox.Add(scrolled, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         vbox.Add(btn_sizer, 0, wx.ALIGN_CENTER | wx.ALL, 8)
@@ -102,6 +121,9 @@ class CitationDialog(wx.Dialog):
                 return
             dlg.Destroy()
         evt.Skip()
+
+    def on_back(self, evt):
+        self.EndModal(DIALOG_BACK)
 
     def get_selected_types(self):
         selected = []

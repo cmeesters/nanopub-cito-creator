@@ -1,6 +1,16 @@
 import wx
 import sys
 import argparse
+import warnings
+import os
+
+# Suppress GTK warnings about widget sizing
+# These are harmless but noisy warnings from wxPython/GTK
+warnings.filterwarnings('ignore')
+
+# Set environment variables to suppress GTK warnings
+os.environ['G_MESSAGES_DEBUG'] = ''
+os.environ['GTK_DEBUG'] = ''
 
 # Try to detect curses availability dynamically
 try:
